@@ -3,7 +3,14 @@ package com.sohail.myassistant
 import java.util.Locale
 
 object MaryNotificationStore {
-    var latestWhatsAppMessage: String = "No WhatsApp notification found yet."
+    private const val MAX_MESSAGES = 100
+    private const val EMPTY_LATEST_MESSAGE = "No WhatsApp notification found yet."
+    private val whitespace = Regex("\\s+")
+
+    @Volatile
+    var latestWhatsAppMessage: String = EMPTY_LATEST_MESSAGE
+
+    @Volatile
     var listener: MaryNotificationListener? = null
 
     private val messages = mutableListOf<WhatsAppMessage>()
@@ -36,11 +43,13 @@ object MaryNotificationStore {
             .trim()
     }
 
+    @Synchronized
     fun resetMessages() {
         messages.clear()
-        latestWhatsAppMessage = "No WhatsApp notification found yet."
+        latestWhatsAppMessage = EMPTY_LATEST_MESSAGE
     }
 
+    @Synchronized
     fun addMessage(
         chatName: String,
         senderName: String,
@@ -48,55 +57,83 @@ object MaryNotificationStore {
         time: Long,
         isGroup: Boolean
     ) {
-        val cleanChatName = chatName.trim()
-        val cleanSenderName = senderName.trim()
-        val cleanMessage = message.trim()
-
-        if (cleanChatName.isBlank() || cleanSenderName.isBlank() || cleanMessage.isBlank()) {
-            return
-        }
-
-        val alreadyExists = messages.any {
-            it.chatName == cleanChatName &&
-                    it.senderName == cleanSenderName &&
-                    it.message == cleanMessage
-        }
-
-        if (!alreadyExists) {
-            messages.add(
+        storeMessages(
+            incoming = listOf(
                 WhatsAppMessage(
-                    chatName = cleanChatName,
-                    senderName = cleanSenderName,
-                    message = cleanMessage,
+                    chatName = chatName,
+                    senderName = senderName,
+                    message = message,
                     time = time,
                     isGroup = isGroup
                 )
+            ),
+            replace = false
+        )
+    }
+
+    @Synchronized
+    fun addMessages(incoming: Iterable<WhatsAppMessage>) {
+        storeMessages(incoming, replace = false)
+    }
+
+    @Synchronized
+    fun replaceMessages(incoming: Iterable<WhatsAppMessage>) {
+        storeMessages(incoming, replace = true)
+    }
+
+    private fun storeMessages(incoming: Iterable<WhatsAppMessage>, replace: Boolean) {
+        if (replace) messages.clear()
+
+        for (message in incoming) {
+            val cleanMessage = message.copy(
+                chatName = cleanWhitespace(message.chatName),
+                senderName = cleanWhitespace(message.senderName),
+                message = cleanWhitespace(message.message)
             )
+
+            if (
+                cleanMessage.chatName.isBlank() ||
+                cleanMessage.senderName.isBlank() ||
+                cleanMessage.message.isBlank()
+            ) {
+                continue
+            }
+
+            // Include the timestamp: a person may legitimately send the same text twice.
+            if (cleanMessage !in messages) {
+                messages.add(cleanMessage)
+            }
         }
 
-        latestWhatsAppMessage = if (isGroup) {
-            "$cleanSenderName in $cleanChatName: $cleanMessage"
-        } else {
-            "$cleanSenderName: $cleanMessage"
-        }
-
-        if (messages.size > 100) {
+        messages.sortBy { it.time }
+        while (messages.size > MAX_MESSAGES) {
             messages.removeAt(0)
         }
+
+        latestWhatsAppMessage = messages.lastOrNull()?.toLatestMessageText()
+            ?: EMPTY_LATEST_MESSAGE
     }
 
-    fun getMessageCount(): Int {
-        return messages.size
+    private fun cleanWhitespace(text: String): String =
+        text.trim().replace(whitespace, " ")
+
+    private fun WhatsAppMessage.toLatestMessageText(): String = if (isGroup) {
+        "$senderName in $chatName: $message"
+    } else {
+        "$senderName: $message"
     }
 
-    fun getSenders(): List<String> {
-        return messages
-            .map { it.senderName }
-            .distinct()
-    }
+    @Synchronized
+    fun getMessageCount(): Int = messages.size
 
+    @Synchronized
+    fun getSenders(): List<String> = messages
+        .map { it.senderName }
+        .distinct()
+
+    @Synchronized
     fun countResponse(): String {
-        val count = getMessageCount()
+        val count = messages.size
 
         return if (count == 0) {
             "No WhatsApp messages found in notifications."
@@ -105,6 +142,7 @@ object MaryNotificationStore {
         }
     }
 
+    @Synchronized
     fun senderListResponse(): String {
         val senders = getSenders()
 
@@ -126,6 +164,7 @@ object MaryNotificationStore {
         return false
     }
 
+    @Synchronized
     fun findSenderInText(text: String): String? {
         val input = normalize(text)
 
@@ -167,6 +206,7 @@ object MaryNotificationStore {
         return null
     }
 
+    @Synchronized
     fun getMessagesForPerson(person: String): List<WhatsAppMessage> {
         return messages.filter { message ->
             nameMatchesPerson(message.senderName, person) ||
@@ -174,6 +214,7 @@ object MaryNotificationStore {
         }.sortedBy { it.time }
     }
 
+    @Synchronized
     fun getChatOptionsForPerson(person: String): List<PendingChatOption> {
         val personMessages = getMessagesForPerson(person)
 
@@ -199,6 +240,7 @@ object MaryNotificationStore {
         )
     }
 
+    @Synchronized
     fun readPersonMessagesFromChat(person: String, chatName: String): String {
         val personMessages = getMessagesForPerson(person)
             .filter { it.chatName == chatName }
@@ -223,6 +265,7 @@ object MaryNotificationStore {
         }
     }
 
+    @Synchronized
     fun readAllMessagesForPerson(person: String): String {
         val options = getChatOptionsForPerson(person)
 
@@ -234,17 +277,21 @@ object MaryNotificationStore {
             readPersonMessagesFromChat(person, option.chatName)
         }
     }
+
+    @Synchronized
     fun getPersonMessagesFromChat(person: String, chatName: String): List<WhatsAppMessage> {
         return getMessagesForPerson(person)
             .filter { it.chatName == chatName }
             .sortedBy { it.time }
     }
 
+    @Synchronized
     fun getAllMessagesForPerson(person: String): List<WhatsAppMessage> {
         return getMessagesForPerson(person)
             .sortedBy { it.time }
     }
 
+    @Synchronized
     fun getDisplayNameForChat(person: String, chatName: String): String {
         val option = getChatOptionsForPerson(person)
             .firstOrNull { it.chatName == chatName }

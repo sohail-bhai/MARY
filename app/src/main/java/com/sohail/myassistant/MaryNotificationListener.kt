@@ -4,6 +4,7 @@ import android.app.Notification
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import java.util.Locale
 
 class MaryNotificationListener : NotificationListenerService() {
 
@@ -16,156 +17,192 @@ class MaryNotificationListener : NotificationListenerService() {
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
         MaryNotificationStore.listener = null
+        MaryNotificationStore.resetMessages()
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         if (sbn == null) return
-        saveWhatsAppNotification(sbn)
+
+        MaryNotificationStore.addMessages(parseWhatsAppNotification(sbn))
     }
 
     fun refreshWhatsAppNotifications() {
-        MaryNotificationStore.resetMessages()
+        val refreshedMessages = activeNotifications
+            .orEmpty()
+            .sortedBy { it.postTime }
+            .flatMap(::parseWhatsAppNotification)
 
-        val notifications = activeNotifications ?: return
+        MaryNotificationStore.replaceMessages(refreshedMessages)
+    }
 
-        for (notification in notifications) {
-            saveWhatsAppNotification(notification)
+    private fun parseWhatsAppNotification(
+        sbn: StatusBarNotification
+    ): List<WhatsAppMessage> {
+        if (sbn.packageName !in WHATSAPP_PACKAGES) return emptyList()
+
+        val notification = sbn.notification
+        if ((notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0) {
+            return emptyList()
         }
+
+        val extras = runCatching { notification.extras }.getOrNull() ?: return emptyList()
+        val title = readText(extras, Notification.EXTRA_TITLE) ?: WHATSAPP_TITLE
+        val conversationTitle = readText(extras, Notification.EXTRA_CONVERSATION_TITLE)
+        val subText = readText(extras, Notification.EXTRA_SUB_TEXT)
+            ?.takeUnless(::isWhatsAppTitle)
+        val groupName = conversationTitle
+            ?.takeUnless(::isWhatsAppTitle)
+            ?: subText?.takeUnless { it.equals(title, ignoreCase = true) }
+        val isGroupConversation = runCatching {
+            extras.getBoolean(Notification.EXTRA_IS_GROUP_CONVERSATION, false)
+        }.getOrDefault(false)
+
+        val messageBundles = runCatching {
+            extras.getParcelableArray(Notification.EXTRA_HISTORIC_MESSAGES).orEmpty() +
+                    extras.getParcelableArray(Notification.EXTRA_MESSAGES).orEmpty()
+        }.getOrNull()
+
+        val styledMessages = messageBundles
+            .orEmpty()
+            .mapNotNull { item ->
+                val bundle = item as? Bundle ?: return@mapNotNull null
+                parseMessageBundle(
+                    bundle = bundle,
+                    sbn = sbn,
+                    title = title,
+                    groupName = groupName,
+                    isGroupConversation = isGroupConversation
+                )
+            }
+            .sortedBy { it.time }
+
+        if (styledMessages.isNotEmpty()) return styledMessages
+
+        val fallbackMessage = readText(extras, Notification.EXTRA_BIG_TEXT)
+            ?: readText(extras, Notification.EXTRA_TEXT)
+            ?: return emptyList()
+
+        if (isWhatsAppSummary(title, fallbackMessage)) return emptyList()
+
+        val senderAndBody = if (isWhatsAppTitle(title)) {
+            parseSenderPrefix(fallbackMessage)
+        } else {
+            null
+        }
+        val senderName = senderAndBody?.first ?: title
+        val message = senderAndBody?.second ?: fallbackMessage
+        val time = sbn.postTime.takeIf { it > 0L } ?: System.currentTimeMillis()
+
+        return listOf(
+            createWhatsAppMessage(
+                title = title,
+                groupName = groupName,
+                senderName = senderName,
+                message = message,
+                time = time,
+                isGroupConversation = isGroupConversation
+            )
+        )
+    }
+
+    private fun parseMessageBundle(
+        bundle: Bundle,
+        sbn: StatusBarNotification,
+        title: String,
+        groupName: String?,
+        isGroupConversation: Boolean
+    ): WhatsAppMessage? {
+        return try {
+            val message = readText(bundle, MESSAGE_TEXT_KEY) ?: return null
+            if (isWhatsAppSummary(title, message)) return null
+
+            val senderName = readText(bundle, MESSAGE_SENDER_KEY) ?: title
+            val messageTime = bundle.getLong(MESSAGE_TIME_KEY, sbn.postTime)
+                .takeIf { it > 0L }
+                ?: sbn.postTime.takeIf { it > 0L }
+                ?: System.currentTimeMillis()
+
+            createWhatsAppMessage(
+                title = title,
+                groupName = groupName,
+                senderName = senderName,
+                message = message,
+                time = messageTime,
+                isGroupConversation = isGroupConversation
+            )
+        } catch (_: RuntimeException) {
+            // One malformed parcelable should not prevent other notifications from being read.
+            null
+        }
+    }
+
+    private fun createWhatsAppMessage(
+        title: String,
+        groupName: String?,
+        senderName: String,
+        message: String,
+        time: Long,
+        isGroupConversation: Boolean
+    ): WhatsAppMessage {
+        val isGroup = isGroupConversation ||
+                (!groupName.isNullOrBlank() && !groupName.equals(senderName, ignoreCase = true))
+
+        val chatName = if (isGroup) {
+            groupName ?: title
+        } else {
+            title.takeUnless(::isWhatsAppTitle) ?: senderName
+        }
+
+        return WhatsAppMessage(
+            chatName = chatName,
+            senderName = senderName,
+            message = message,
+            time = time,
+            isGroup = isGroup
+        )
+    }
+
+    private fun readText(bundle: Bundle, key: String): String? = runCatching {
+        bundle.getCharSequence(key)?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+    }.getOrNull()
+
+    private fun parseSenderPrefix(message: String): Pair<String, String>? {
+        val colonIndex = message.indexOf(':')
+        if (colonIndex !in 1..MAX_SENDER_PREFIX_LENGTH) return null
+
+        val sender = message.substring(0, colonIndex).trim()
+        val body = message.substring(colonIndex + 1).trim()
+
+        if (sender.isEmpty() || body.isEmpty() || !sender.first().isLetter()) return null
+        if (sender.any { !it.isLetter() && !it.isWhitespace() && it !in "'.-" }) return null
+
+        return sender to body
     }
 
     private fun isWhatsAppSummary(title: String, message: String): Boolean {
-        val cleanTitle = title.lowercase()
-        val cleanMessage = message.lowercase()
+        if (!isWhatsAppTitle(title)) return false
 
-        return cleanTitle == "whatsapp" &&
-                (
-                        cleanMessage.contains("messages from") ||
-                                cleanMessage.contains("new messages") ||
-                                cleanMessage.contains("chats") ||
-                                cleanMessage.contains("checking for new messages")
-                        )
+        val normalizedMessage = message.lowercase(Locale.ROOT)
+        return SUMMARY_PHRASES.any { phrase -> normalizedMessage.contains(phrase) }
     }
 
-    private fun saveWhatsAppNotification(sbn: StatusBarNotification) {
-        val packageName = sbn.packageName
+    private fun isWhatsAppTitle(title: String): Boolean =
+        title.trim().lowercase(Locale.ROOT) in WHATSAPP_APP_TITLES
 
-        if (packageName != "com.whatsapp" && packageName != "com.whatsapp.w4b") {
-            return
-        }
+    private companion object {
+        const val WHATSAPP_TITLE = "WhatsApp"
+        const val MESSAGE_TEXT_KEY = "text"
+        const val MESSAGE_SENDER_KEY = "sender"
+        const val MESSAGE_TIME_KEY = "time"
+        const val MAX_SENDER_PREFIX_LENGTH = 80
 
-        // Skip WhatsApp grouped summary notification
-        if ((sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY) != 0) {
-            return
-        }
-
-        val extras = sbn.notification.extras
-
-        val title = extras
-            .getCharSequence(Notification.EXTRA_TITLE)
-            ?.toString()
-            ?.trim()
-            ?: "WhatsApp"
-
-        val conversationTitle = extras
-            .getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)
-            ?.toString()
-            ?.trim()
-
-        val subText = extras
-            .getCharSequence(Notification.EXTRA_SUB_TEXT)
-            ?.toString()
-            ?.trim()
-
-        val groupNameCandidate = when {
-            !conversationTitle.isNullOrBlank() -> conversationTitle
-            !subText.isNullOrBlank() && subText != "WhatsApp" -> subText
-            else -> null
-        }
-
-        val messageArray = extras.getParcelableArray(Notification.EXTRA_MESSAGES)
-        var foundMessages = false
-
-        if (messageArray != null) {
-            for (item in messageArray) {
-                val bundle = item as? Bundle ?: continue
-
-                val senderFromBundle = bundle
-                    .getCharSequence("sender")
-                    ?.toString()
-                    ?.trim()
-
-                val text = bundle
-                    .getCharSequence("text")
-                    ?.toString()
-                    ?.trim()
-
-                if (!text.isNullOrBlank()) {
-                    if (isWhatsAppSummary(title, text)) return
-
-                    val senderName = senderFromBundle ?: title
-                    val chatName = groupNameCandidate ?: title
-
-                    val isGroup = groupNameCandidate != null &&
-                            !groupNameCandidate.equals(senderName, ignoreCase = true)
-
-                    MaryNotificationStore.addMessage(
-                        chatName = chatName,
-                        senderName = senderName,
-                        message = text,
-                        time = sbn.postTime,
-                        isGroup = isGroup
-                    )
-
-                    foundMessages = true
-                }
-            }
-        }
-
-        if (!foundMessages) {
-            val text = extras
-                .getCharSequence(Notification.EXTRA_TEXT)
-                ?.toString()
-                ?.trim()
-
-            val bigText = extras
-                .getCharSequence(Notification.EXTRA_BIG_TEXT)
-                ?.toString()
-                ?.trim()
-
-            var message = bigText ?: text ?: "New WhatsApp message"
-
-            if (isWhatsAppSummary(title, message)) {
-                return
-            }
-
-            var chatName = title
-            var senderName = title
-            var isGroup = false
-
-            // Example group notification text:
-            // Dharmik: send notes
-            if (message.contains(":") && title != "WhatsApp") {
-                val parts = message.split(":", limit = 2)
-
-                if (parts.size == 2) {
-                    senderName = parts[0].trim()
-                    message = parts[1].trim()
-                    chatName = groupNameCandidate ?: title
-                    isGroup = true
-                }
-            } else if (groupNameCandidate != null) {
-                chatName = groupNameCandidate
-                senderName = title
-                isGroup = true
-            }
-
-            MaryNotificationStore.addMessage(
-                chatName = chatName,
-                senderName = senderName,
-                message = message,
-                time = sbn.postTime,
-                isGroup = isGroup
-            )
-        }
+        val WHATSAPP_APP_TITLES = setOf("whatsapp", "whatsapp business")
+        val WHATSAPP_PACKAGES = setOf("com.whatsapp", "com.whatsapp.w4b")
+        val SUMMARY_PHRASES = listOf(
+            "messages from",
+            "new messages",
+            "chats",
+            "checking for new messages"
+        )
     }
 }
