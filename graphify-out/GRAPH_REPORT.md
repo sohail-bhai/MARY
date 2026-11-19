@@ -1,45 +1,51 @@
-# Graph Report - chatgpt  (2026-11-19)
+# Graph Report - MAry  (2026-11-19)
 
 ## Corpus Check
-- 18 files · ~6,700 words
+- 20 files · ~8,611 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 20 file(s) not represented in the graph (top: .xml 10, (none) 3, .properties 3)
-- WARNING: 20 of 49 files seen (41%) have no supported extractor and are missing from this graph entirely. It may look complete while representing only part of the codebase.
+- Unclassified: 19 file(s) not represented in the graph (top: .xml 10, .properties 3, (none) 2)
 
 ## Summary
-- 183 nodes · 330 edges · 15 communities (3 shown, 12 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS
+- 234 nodes · 457 edges · 20 communities (4 shown, 16 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 8 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3fb991d1`
+- Built from commit: `170ee2a7`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - ConversationManager.kt
 - MaryNotificationStore
-- MainActivity
+- .onCreate
 - MaryNotificationListener
 - BluetoothAudioRouter.kt
-- MaryConversationMemory
+- detectMaryCommand
 - Theme.kt
 - ExampleInstrumentedTest.kt
 - ExampleUnitTest.kt
+- VoiceAssistantController
+- VoiceAssistantController.kt
+- MainActivity
 
 ## God Nodes (most connected - your core abstractions)
-1. `MaryNotificationStore` - 24 edges
-2. `executeMaryAction()` - 16 edges
-3. `MaryNotificationListener` - 14 edges
-4. `WhatsAppMessage` - 12 edges
-5. `MaryReadingSession` - 10 edges
-6. `MainActivity` - 9 edges
-7. `MaryConversationMemory` - 8 edges
-8. `readPersonWhatsAppMessage()` - 8 edges
-9. `UtteranceProgressListener` - 7 edges
-10. `detectMaryCommand()` - 7 edges
+1. `VoiceAssistantController` - 24 edges
+2. `MaryNotificationStore` - 24 edges
+3. `executeMaryAction()` - 16 edges
+4. `MaryNotificationListener` - 14 edges
+5. `RecognitionListener` - 13 edges
+6. `WhatsAppMessage` - 13 edges
+7. `detectMaryCommand()` - 12 edges
+8. `VoiceAssistantUnitTest` - 10 edges
+9. `MaryReadingSession` - 10 edges
+10. `MaryConversationMemory` - 8 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `MainActivity` --references--> `VoiceAssistantController`  [EXTRACTED]
+  app/src/main/java/com/sohail/myassistant/MainActivity.kt → app/src/main/java/com/sohail/myassistant/VoiceAssistantController.kt
+- `MaryHomeScreen()` --references--> `VoiceAssistantController`  [EXTRACTED]
+  app/src/main/java/com/sohail/myassistant/MainActivity.kt → app/src/main/java/com/sohail/myassistant/VoiceAssistantController.kt
 - `MaryNotificationStore` --references--> `MaryNotificationListener`  [EXTRACTED]
   app/src/main/java/com/sohail/myassistant/WhatsAppMessageStore.kt → app/src/main/java/com/sohail/myassistant/MaryNotificationListener.kt
 - `MaryReadingSession` --references--> `WhatsAppMessage`  [EXTRACTED]
@@ -48,35 +54,39 @@
 ## Import Cycles
 - None detected.
 
-## Communities (15 total, 12 thin omitted)
+## Communities (20 total, 16 thin omitted)
 
 ### Community 1 - "ConversationManager.kt"
-Cohesion: 0.14
-Nodes (13): countWhatsAppMessages(), executeMaryAction(), handleAutoListenTimeout(), listWhatsAppSenders(), openNotificationAccessSettings(), openWhatsApp(), readAllPendingPersonMessages(), readLatestWhatsAppNotification() (+5 more)
+Cohesion: 0.13
+Nodes (13): countWhatsAppMessages(), executeMaryAction(), handleAutoListenTimeout(), listWhatsAppSenders(), MaryConversationMemory, openNotificationAccessSettings(), openWhatsApp(), PendingChatOption (+5 more)
 
-### Community 3 - "MainActivity"
-Cohesion: 0.14
-Nodes (3): MainActivity, UtteranceProgressListener, MaryHomeScreen()
+### Community 2 - "MaryNotificationStore"
+Cohesion: 0.17
+Nodes (4): readSelectedChatMessages(), updateConversationState(), WhatsAppMessage, MaryNotificationStore
 
-### Community 6 - "MaryConversationMemory"
-Cohesion: 0.26
-Nodes (5): detectMaryCommand(), extractPossiblePersonWords(), MaryCommand, MaryConversationMemory, PendingChatOption
+### Community 6 - "detectMaryCommand"
+Cohesion: 0.17
+Nodes (4): detectMaryCommand(), extractPossiblePersonWords(), MaryCommand, VoiceAssistantUnitTest
+
+### Community 14 - "VoiceAssistantController"
+Cohesion: 0.17
+Nodes (3): VoiceAssistantController, RecognitionCallbacks, UtteranceProgressListener
 
 ## Knowledge Gaps
-- **12 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **16 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `MaryNotificationStore` connect `MaryNotificationStore` to `MaryNotificationListener`, `MaryConversationMemory`?**
-  _High betweenness centrality (0.119) - this node is a cross-community bridge._
+- **Why does `VoiceAssistantController` connect `VoiceAssistantController` to `MainActivity`, `.onCreate`, `detectMaryCommand`, `VoiceAssistantController.kt`?**
+  _High betweenness centrality (0.155) - this node is a cross-community bridge._
 - **Should `MainActivity.kt` be split into smaller, more focused modules?**
-  _Cohesion score 0.05263157894736842 - nodes in this community are weakly interconnected._
-- **Why does `WhatsAppMessage` connect `MaryNotificationListener` to `ConversationManager.kt`, `MaryNotificationStore`?**
-  _High betweenness centrality (0.066) - this node is a cross-community bridge._
+  _Cohesion score 0.07407407407407407 - nodes in this community are weakly interconnected._
+- **Why does `MaryNotificationStore` connect `MaryNotificationStore` to `MaryNotificationListener`, `VoiceAssistantController.kt`?**
+  _High betweenness centrality (0.096) - this node is a cross-community bridge._
 - **Should `ConversationManager.kt` be split into smaller, more focused modules?**
-  _Cohesion score 0.14285714285714285 - nodes in this community are weakly interconnected._
-- **Why does `MaryNotificationListener` connect `MaryNotificationListener` to `MaryNotificationStore`?**
+  _Cohesion score 0.1268939393939394 - nodes in this community are weakly interconnected._
+- **Why does `RecognitionListener` connect `VoiceAssistantController.kt` to `VoiceAssistantController`?**
   _High betweenness centrality (0.061) - this node is a cross-community bridge._
-- **Should `MainActivity` be split into smaller, more focused modules?**
-  _Cohesion score 0.13970588235294118 - nodes in this community are weakly interconnected._
+- **Should `VoiceAssistantController.kt` be split into smaller, more focused modules?**
+  _Cohesion score 0.10952380952380952 - nodes in this community are weakly interconnected._
