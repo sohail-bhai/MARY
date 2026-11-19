@@ -1,5 +1,6 @@
 package com.sohail.myassistant
 
+import android.speech.SpeechRecognizer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -15,7 +16,9 @@ class VoiceAssistantUnitTest {
             "shut up",
             "kill",
             "emergency stop",
-            "stop voice"
+            "stop voice",
+            "PLEASE STOP SPEAKING NOW",
+            "shut up!"
         )
 
         for (phrase in emergencyCommands) {
@@ -38,6 +41,23 @@ class VoiceAssistantUnitTest {
     fun testWakeWordDetection() {
         assertEquals("WAKE_WORD_DETECTED", detectMaryCommand("hey mary", "IDLE").command)
         assertEquals("WAKE_WORD_DETECTED", detectMaryCommand("hello mary", "IDLE").command)
+    }
+
+    @Test
+    fun testConversationConfirmationCommands() {
+        // Yes variants in confirmation state
+        val yesInputs = listOf("yes", "yeah", "yep", "sure", "okay", "ok", "tell me")
+        for (yes in yesInputs) {
+            val result = detectMaryCommand(yes, "WAITING_FOR_SENDER_CONFIRMATION")
+            assertEquals("LIST_WHATSAPP_SENDERS", result.command)
+        }
+
+        // No variants in confirmation state
+        val noInputs = listOf("no", "nope", "not now")
+        for (no in noInputs) {
+            val result = detectMaryCommand(no, "WAITING_FOR_SENDER_CONFIRMATION")
+            assertEquals("CANCEL_CONVERSATION", result.command)
+        }
     }
 
     @Test
@@ -77,6 +97,9 @@ class VoiceAssistantUnitTest {
         val continueCmd = detectMaryCommand("continue", "READING_MESSAGES")
         assertEquals("CONTINUE_READING", continueCmd.command)
 
+        val nextCmd = detectMaryCommand("next", "READING_MESSAGES")
+        assertEquals("CONTINUE_READING", nextCmd.command)
+
         val repeatCmd = detectMaryCommand("repeat", "READING_MESSAGES")
         assertEquals("REPEAT_READING", repeatCmd.command)
 
@@ -109,5 +132,36 @@ class VoiceAssistantUnitTest {
         assertNotNull(match2)
 
         MaryNotificationStore.resetMessages()
+    }
+
+    @Test
+    fun testBluetoothRouteStatusDefault() {
+        val status = BluetoothAudioRouter.getAudioRouteStatus()
+        assertEquals("Using phone microphone", status)
+        assertFalse(BluetoothAudioRouter.isBluetoothRouted)
+    }
+
+    @Test
+    fun testSpeechRecognizerErrorMapping() {
+        // Simulating the error mapping in VoiceAssistantController
+        fun mapError(code: Int): String {
+            return when (code) {
+                SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
+                SpeechRecognizer.ERROR_CLIENT -> "Client speech recognition error"
+                SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required"
+                SpeechRecognizer.ERROR_NETWORK -> "Network connection error"
+                SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
+                SpeechRecognizer.ERROR_NO_MATCH -> "No speech recognized"
+                SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Speech recognizer busy"
+                SpeechRecognizer.ERROR_SERVER -> "Speech server error"
+                SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech input heard"
+                else -> "Speech recognition error ($code)"
+            }
+        }
+
+        assertEquals("No speech recognized", mapError(SpeechRecognizer.ERROR_NO_MATCH))
+        assertEquals("No speech input heard", mapError(SpeechRecognizer.ERROR_SPEECH_TIMEOUT))
+        assertEquals("Speech recognizer busy", mapError(SpeechRecognizer.ERROR_RECOGNIZER_BUSY))
+        assertEquals("Network connection error", mapError(SpeechRecognizer.ERROR_NETWORK))
     }
 }

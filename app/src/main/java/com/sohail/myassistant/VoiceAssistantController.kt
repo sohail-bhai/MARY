@@ -2,6 +2,10 @@ package com.sohail.myassistant
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -14,8 +18,12 @@ import android.util.Log
 import java.util.Locale
 
 /**
- * Robust voice assistant controller encapsulating Text-to-Speech, SpeechRecognizer,
- * Bluetooth audio routing, and error recovery policies.
+ * Robust voice assistant controller encapsulating:
+ * - Text-to-Speech with utterance tracking
+ * - SpeechRecognizer with lifecycle-safe creation & destruction
+ * - Audio Focus management (ducks background music while speaking or listening)
+ * - Bluetooth SCO / BLE headset routing
+ * - Driving-oriented silence/timeout error recovery
  */
 class VoiceAssistantController(
     private val context: Context
@@ -24,20 +32,30 @@ class VoiceAssistantController(
     companion object {
         private const val TAG = "VoiceAssistantController"
         private const val AUDIO_SWITCH_SETTLE_MS = 600L
-        private const val AUTO_LISTEN_RETRY_DELAY_MS = 1000L
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+
+    // Audio Focus tracking
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var hasAudioFocus: Boolean = false
 
     // Text-To-Speech
     private var textToSpeech: TextToSpeech? = null
     var isTtsReady: Boolean = false
         private set
 
+    @Volatile
+    private var currentSpeakingUtteranceId: String? = null
+
     // SpeechRecognizer
     private var speechRecognizer: SpeechRecognizer? = null
     var isListening: Boolean = false
         private set
+
+    // Pending listener startup runnable
+    private var pendingSessionRunnable: Runnable? = null
 
     init {
         try {
@@ -59,8 +77,70 @@ class VoiceAssistantController(
         }
     }
 
+    // =========================================================================
+    // AUDIO FOCUS MANAGEMENT (Ducks background music while driving)
+    // =========================================================================
+
+    private fun requestTransientAudioFocus(): Boolean {
+        if (audioManager == null || hasAudioFocus) return hasAudioFocus
+
+        try {
+            val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val playbackAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+
+                val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                    .setAudioAttributes(playbackAttributes)
+                    .setAcceptsDelayedFocusGain(false)
+                    .setOnAudioFocusChangeListener { /* No-op for transient */ }
+                    .build()
+
+                audioFocusRequest = request
+                audioManager.requestAudioFocus(request)
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.requestAudioFocus(
+                    { /* No-op */ },
+                    AudioManager.STREAM_VOICE_CALL,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+                )
+            }
+
+            hasAudioFocus = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+            Log.d(TAG, "requestTransientAudioFocus granted=$hasAudioFocus")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error requesting audio focus: ${e.message}", e)
+            hasAudioFocus = false
+        }
+        return hasAudioFocus
+    }
+
+    private fun abandonTransientAudioFocus() {
+        if (audioManager == null || !hasAudioFocus) return
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioFocusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+                audioFocusRequest = null
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.abandonAudioFocus(null)
+            }
+            hasAudioFocus = false
+            Log.d(TAG, "abandonTransientAudioFocus executed")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error abandoning audio focus: ${e.message}", e)
+        }
+    }
+
+    // =========================================================================
+    // TEXT TO SPEECH
+    // =========================================================================
+
     /**
-     * Speaks text with utterance completion callback.
+     * Speaks text with utterance completion callback, automatically ducking media.
      */
     fun speak(text: String, onDone: (() -> Unit)? = null) {
         if (!isTtsReady) {
@@ -69,22 +149,35 @@ class VoiceAssistantController(
             return
         }
 
+        requestTransientAudioFocus()
+
         val utteranceId = "MARY_TTS_${System.currentTimeMillis()}"
+        currentSpeakingUtteranceId = utteranceId
 
         textToSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(id: String?) {}
 
             override fun onDone(id: String?) {
-                if (id == utteranceId) {
-                    mainHandler.post { onDone?.invoke() }
+                if (id == utteranceId && id == currentSpeakingUtteranceId) {
+                    mainHandler.post {
+                        if (!isListening) {
+                            abandonTransientAudioFocus()
+                        }
+                        onDone?.invoke()
+                    }
                 }
             }
 
             @Deprecated("Deprecated in Java")
             override fun onError(id: String?) {
-                if (id == utteranceId) {
+                if (id == utteranceId && id == currentSpeakingUtteranceId) {
                     Log.e(TAG, "TTS error on utterance: $id")
-                    mainHandler.post { onDone?.invoke() }
+                    mainHandler.post {
+                        if (!isListening) {
+                            abandonTransientAudioFocus()
+                        }
+                        onDone?.invoke()
+                    }
                 }
             }
         })
@@ -98,15 +191,24 @@ class VoiceAssistantController(
     }
 
     /**
-     * Stops any ongoing TTS speech.
+     * Stops ongoing TTS speech and abandons focus if not listening.
      */
     fun stopSpeaking() {
+        currentSpeakingUtteranceId = null
         try {
             textToSpeech?.stop()
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping TTS: ${e.message}", e)
+        } finally {
+            if (!isListening) {
+                abandonTransientAudioFocus()
+            }
         }
     }
+
+    // =========================================================================
+    // SPEECH RECOGNITION
+    // =========================================================================
 
     data class RecognitionCallbacks(
         val onReady: (isBluetooth: Boolean) -> Unit = {},
@@ -120,10 +222,13 @@ class VoiceAssistantController(
 
     /**
      * Starts voice recognition session with Bluetooth routing and structured callbacks.
+     * Cancels any pending delayed startup before scheduling a new one.
      */
     fun startListeningSession(
         callbacks: RecognitionCallbacks
     ) {
+        cancelPendingStartup()
+
         if (isListening) {
             Log.w(TAG, "SpeechRecognizer is already listening")
             return
@@ -134,17 +239,16 @@ class VoiceAssistantController(
             return
         }
 
-        // 1. Route audio to Bluetooth headset if available
-        val routedToBluetooth = BluetoothAudioRouter.routeToBluetoothMic(context)
-        val routeStatus = if (routedToBluetooth) {
-            "Bluetooth mic ready..."
-        } else {
-            "Using phone microphone..."
-        }
-        callbacks.onRouteStatus(routeStatus)
+        // 1. Duck background media while listening
+        requestTransientAudioFocus()
 
-        // 2. Allow hardware routing switch to settle, then initialize recognizer
-        mainHandler.postDelayed({
+        // 2. Route audio to Bluetooth headset if available
+        val routedToBluetooth = BluetoothAudioRouter.routeToBluetoothMic(context)
+        callbacks.onRouteStatus(BluetoothAudioRouter.getAudioRouteStatus())
+
+        // 3. Settle audio hardware switch before opening input buffer
+        val runnable = Runnable {
+            pendingSessionRunnable = null
             try {
                 destroySpeechRecognizer()
                 speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
@@ -169,9 +273,12 @@ class VoiceAssistantController(
                         override fun onError(error: Int) {
                             isListening = false
                             cleanupAudioRoute()
+                            abandonTransientAudioFocus()
+
                             val msg = getErrorMessage(error)
                             val recoverable = error == SpeechRecognizer.ERROR_NO_MATCH ||
                                     error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
+
                             destroySpeechRecognizer()
                             callbacks.onError(msg, recoverable, error)
                         }
@@ -179,6 +286,8 @@ class VoiceAssistantController(
                         override fun onResults(results: Bundle?) {
                             isListening = false
                             cleanupAudioRoute()
+                            abandonTransientAudioFocus()
+
                             val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                             val text = matches?.firstOrNull()?.trim() ?: ""
                             destroySpeechRecognizer()
@@ -212,12 +321,25 @@ class VoiceAssistantController(
                 isListening = false
                 cleanupAudioRoute()
                 destroySpeechRecognizer()
+                abandonTransientAudioFocus()
                 callbacks.onError("Could not start microphone: ${e.message}", false, -1)
             }
-        }, AUDIO_SWITCH_SETTLE_MS)
+        }
+
+        pendingSessionRunnable = runnable
+        mainHandler.postDelayed(runnable, AUDIO_SWITCH_SETTLE_MS)
+    }
+
+    private fun cancelPendingStartup() {
+        pendingSessionRunnable?.let {
+            mainHandler.removeCallbacks(it)
+            pendingSessionRunnable = null
+            Log.d(TAG, "Cancelled pending listening startup runnable")
+        }
     }
 
     fun stopListening() {
+        cancelPendingStartup()
         try {
             speechRecognizer?.stopListening()
         } catch (e: Exception) {
@@ -226,6 +348,7 @@ class VoiceAssistantController(
     }
 
     fun cancelListening() {
+        cancelPendingStartup()
         try {
             speechRecognizer?.cancel()
         } catch (e: Exception) {
@@ -234,6 +357,7 @@ class VoiceAssistantController(
             isListening = false
             cleanupAudioRoute()
             destroySpeechRecognizer()
+            abandonTransientAudioFocus()
         }
     }
 
@@ -252,7 +376,7 @@ class VoiceAssistantController(
         BluetoothAudioRouter.resetAudioRoute(context)
     }
 
-    private fun getErrorMessage(errorCode: Int): String {
+    fun getErrorMessage(errorCode: Int): String {
         return when (errorCode) {
             SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
             SpeechRecognizer.ERROR_CLIENT -> "Client speech recognition error"
@@ -268,12 +392,13 @@ class VoiceAssistantController(
     }
 
     fun onPause() {
-        mainHandler.removeCallbacksAndMessages(null)
+        cancelPendingStartup()
         stopSpeaking()
         cancelListening()
     }
 
     fun destroy() {
+        cancelPendingStartup()
         mainHandler.removeCallbacksAndMessages(null)
         stopSpeaking()
         cancelListening()

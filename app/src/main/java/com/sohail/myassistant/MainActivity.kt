@@ -87,6 +87,7 @@ fun MaryHomeScreen(
     voiceController: VoiceAssistantController? = null
 ) {
     val context = LocalContext.current
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
 
     var isActive by remember { mutableStateOf(false) }
     var isListening by remember { mutableStateOf(false) }
@@ -95,6 +96,15 @@ fun MaryHomeScreen(
     var maryResponse by remember { mutableStateOf("Mary is waiting...") }
     var statusText by remember { mutableStateOf("Tap Start Mary") }
     var conversationState by remember { mutableStateOf("IDLE") }
+
+    var pendingAutoListenRunnable by remember { mutableStateOf<Runnable?>(null) }
+
+    fun cancelPendingAutoListen() {
+        pendingAutoListenRunnable?.let {
+            mainHandler.removeCallbacks(it)
+            pendingAutoListenRunnable = null
+        }
+    }
 
     fun shouldAutoListen(command: String): Boolean {
         return when (command) {
@@ -143,6 +153,8 @@ fun MaryHomeScreen(
         if (isListening) {
             return
         }
+
+        cancelPendingAutoListen()
 
         if (autoStarted) {
             statusText = "Auto listening..."
@@ -193,12 +205,14 @@ fun MaryHomeScreen(
                     if (spokenText == "No speech detected") {
                         if (retryCount < 1) {
                             statusText = "No speech detected. Listening again..."
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                startVoiceListening(
-                                    autoStarted = autoStarted,
-                                    retryCount = retryCount + 1
-                                )
-                            }, 1200)
+                            val retryRunnable = Runnable {
+                                pendingAutoListenRunnable = null
+                                if (isActive) {
+                                    startVoiceListening(autoStarted = autoStarted, retryCount = retryCount + 1)
+                                }
+                            }
+                            pendingAutoListenRunnable = retryRunnable
+                            mainHandler.postDelayed(retryRunnable, 1200)
                             return@RecognitionCallbacks
                         }
 
@@ -231,6 +245,7 @@ fun MaryHomeScreen(
                     conversationState = nextConversationState
 
                     if (result.command == "STOP_SPEAKING") {
+                        cancelPendingAutoListen()
                         stopSpeaking()
                     } else {
                         speak(maryResponse) {
@@ -239,12 +254,14 @@ fun MaryHomeScreen(
                                 shouldAutoListen(result.command) &&
                                 nextConversationState != "IDLE"
                             ) {
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    startVoiceListening(
-                                        autoStarted = true,
-                                        retryCount = 0
-                                    )
-                                }, 1200)
+                                val autoRunnable = Runnable {
+                                    pendingAutoListenRunnable = null
+                                    if (isActive) {
+                                        startVoiceListening(autoStarted = true, retryCount = 0)
+                                    }
+                                }
+                                pendingAutoListenRunnable = autoRunnable
+                                mainHandler.postDelayed(autoRunnable, 1200)
                             }
                         }
                     }
@@ -254,12 +271,14 @@ fun MaryHomeScreen(
 
                     if (autoStarted && retryCount < 1) {
                         statusText = "I did not catch that. Listening again..."
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            startVoiceListening(
-                                autoStarted = true,
-                                retryCount = retryCount + 1
-                            )
-                        }, 1200)
+                        val retryRunnable = Runnable {
+                            pendingAutoListenRunnable = null
+                            if (isActive) {
+                                startVoiceListening(autoStarted = true, retryCount = retryCount + 1)
+                            }
+                        }
+                        pendingAutoListenRunnable = retryRunnable
+                        mainHandler.postDelayed(retryRunnable, 1200)
                         return@RecognitionCallbacks
                     }
 
@@ -274,14 +293,14 @@ fun MaryHomeScreen(
                     } else {
                         statusText = "Could not understand. Try again."
                         if (isActive && isRecoverable && retryCount < 1) {
-                            Handler(Looper.getMainLooper()).postDelayed({
+                            val retryRunnable = Runnable {
+                                pendingAutoListenRunnable = null
                                 if (isActive) {
-                                    startVoiceListening(
-                                        autoStarted = false,
-                                        retryCount = retryCount + 1
-                                    )
+                                    startVoiceListening(autoStarted = false, retryCount = retryCount + 1)
                                 }
-                            }, 1200)
+                            }
+                            pendingAutoListenRunnable = retryRunnable
+                            mainHandler.postDelayed(retryRunnable, 1200)
                         }
                     }
                 }
@@ -347,13 +366,14 @@ fun MaryHomeScreen(
                 Button(
                     onClick = {
                         isActive = !isActive
-                        statusText = if (isActive) {
-                            "Mary is active. Tap Listen."
+                        cancelPendingAutoListen()
+                        if (isActive) {
+                            statusText = "Mary is active. Tap Listen."
                         } else {
                             voiceController?.cancelListening()
                             voiceController?.stopSpeaking()
                             isListening = false
-                            "Tap Start Mary"
+                            statusText = "Tap Start Mary"
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -368,6 +388,7 @@ fun MaryHomeScreen(
 
                 Button(
                     onClick = {
+                        cancelPendingAutoListen()
                         stopSpeaking()
                         maryResponse = "Stopped speaking."
                         statusText = "Speech stopped"
@@ -384,6 +405,7 @@ fun MaryHomeScreen(
 
                 Button(
                     onClick = {
+                        cancelPendingAutoListen()
                         if (isActive) {
                             startVoiceListening(false)
                         } else {

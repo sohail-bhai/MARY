@@ -22,6 +22,10 @@ object BluetoothAudioRouter {
     var isBluetoothRouted: Boolean = false
         private set
 
+    @Volatile
+    var connectedDeviceName: String? = null
+        private set
+
     /**
      * Checks whether the app has the required Bluetooth permission.
      * On Android 12+ (API 31+), BLUETOOTH_CONNECT is required.
@@ -45,22 +49,28 @@ object BluetoothAudioRouter {
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
             ?: return false
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (!hasBluetoothPermission(context)) {
-                return false
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (!hasBluetoothPermission(context)) {
+                    return false
+                }
+                audioManager.availableCommunicationDevices.any { device ->
+                    device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                            device.type == AudioDeviceInfo.TYPE_BLE_HEADSET
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.isBluetoothScoAvailableOffCall
             }
-            return audioManager.availableCommunicationDevices.any { device ->
-                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                        device.type == AudioDeviceInfo.TYPE_BLE_HEADSET
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            return audioManager.isBluetoothScoAvailableOffCall
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking Bluetooth headset availability: ${e.message}", e)
+            false
         }
     }
 
     /**
      * Attempts to route microphone input and voice audio to a connected Bluetooth headset.
+     * Guarantees that audioManager.mode is never left in MODE_IN_COMMUNICATION if routing fails.
      *
      * @return true if successfully routed to Bluetooth, false if falling back to device mic.
      */
@@ -72,42 +82,64 @@ object BluetoothAudioRouter {
             return false
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (!hasBluetoothPermission(context)) {
-                Log.w(TAG, "BLUETOOTH_CONNECT permission missing, cannot route audio")
-                return false
-            }
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (!hasBluetoothPermission(context)) {
+                    Log.w(TAG, "BLUETOOTH_CONNECT permission missing, falling back to device mic")
+                    return false
+                }
 
-            val bluetoothDevice = audioManager.availableCommunicationDevices.firstOrNull { device ->
-                device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
-                        device.type == AudioDeviceInfo.TYPE_BLE_HEADSET
-            }
+                val bluetoothDevice = audioManager.availableCommunicationDevices.firstOrNull { device ->
+                    device.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO ||
+                            device.type == AudioDeviceInfo.TYPE_BLE_HEADSET
+                }
 
-            if (bluetoothDevice == null) {
-                Log.i(TAG, "No Bluetooth communication device found, using device microphone")
-                return false
-            }
+                if (bluetoothDevice == null) {
+                    Log.i(TAG, "No Bluetooth communication device found, using phone mic")
+                    connectedDeviceName = null
+                    return false
+                }
 
-            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-            val success = audioManager.setCommunicationDevice(bluetoothDevice)
-            isBluetoothRouted = success
-            Log.i(TAG, "setCommunicationDevice (${bluetoothDevice.productName}) result: $success")
-            return success
-        } else {
-            @Suppress("DEPRECATION")
-            if (!audioManager.isBluetoothScoAvailableOffCall) {
-                Log.i(TAG, "Bluetooth SCO off-call not available on this device")
-                return false
-            }
+                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                val success = audioManager.setCommunicationDevice(bluetoothDevice)
 
-            audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-            @Suppress("DEPRECATION")
-            audioManager.startBluetoothSco()
-            @Suppress("DEPRECATION")
-            audioManager.isBluetoothScoOn = true
-            isBluetoothRouted = true
-            Log.i(TAG, "Legacy Bluetooth SCO requested")
-            return true
+                if (success) {
+                    isBluetoothRouted = true
+                    connectedDeviceName = bluetoothDevice.productName?.toString() ?: "Bluetooth Headset"
+                    Log.i(TAG, "Successfully routed audio to $connectedDeviceName")
+                    true
+                } else {
+                    // Revert mode immediately if setCommunicationDevice failed
+                    audioManager.mode = AudioManager.MODE_NORMAL
+                    isBluetoothRouted = false
+                    connectedDeviceName = null
+                    Log.w(TAG, "setCommunicationDevice failed; reverted to MODE_NORMAL")
+                    false
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                if (!audioManager.isBluetoothScoAvailableOffCall) {
+                    Log.i(TAG, "Bluetooth SCO off-call not available on this device")
+                    connectedDeviceName = null
+                    return false
+                }
+
+                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                @Suppress("DEPRECATION")
+                audioManager.startBluetoothSco()
+                @Suppress("DEPRECATION")
+                audioManager.isBluetoothScoOn = true
+                isBluetoothRouted = true
+                connectedDeviceName = "Bluetooth SCO Device"
+                Log.i(TAG, "Legacy Bluetooth SCO requested")
+                true
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception during Bluetooth mic routing: ${e.message}", e)
+            audioManager.mode = AudioManager.MODE_NORMAL
+            isBluetoothRouted = false
+            connectedDeviceName = null
+            false
         }
     }
 
@@ -133,7 +165,19 @@ object BluetoothAudioRouter {
         } finally {
             audioManager.mode = AudioManager.MODE_NORMAL
             isBluetoothRouted = false
+            connectedDeviceName = null
             Log.i(TAG, "Audio route reset to normal")
+        }
+    }
+
+    /**
+     * Returns a human-readable description of the active audio route.
+     */
+    fun getAudioRouteStatus(): String {
+        return if (isBluetoothRouted && connectedDeviceName != null) {
+            "Connected to $connectedDeviceName"
+        } else {
+            "Using phone microphone"
         }
     }
 }
