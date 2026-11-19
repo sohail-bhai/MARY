@@ -1,17 +1,11 @@
 package com.sohail.myassistant
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
-import android.speech.tts.UtteranceProgressListener
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
-import android.speech.tts.TextToSpeech
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -45,80 +39,43 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.sohail.myassistant.ui.theme.MaryTheme
-import java.util.Locale
 
-class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
+class MainActivity : ComponentActivity() {
 
-    private var textToSpeech: TextToSpeech? = null
-    private var isTtsReady = false
+    private lateinit var voiceController: VoiceAssistantController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        textToSpeech = TextToSpeech(this, this)
+        voiceController = VoiceAssistantController(this)
 
         setContent {
             MaryTheme {
                 MaryHomeScreen(
                     speak = { text, onDone ->
-                        speakText(text, onDone)
+                        voiceController.speak(text, onDone)
                     },
                     stopSpeaking = {
-                        stopSpeaking()
-                    }
+                        voiceController.stopSpeaking()
+                    },
+                    voiceController = voiceController
                 )
             }
         }
     }
 
-    override fun onInit(status: Int) {
-        if (status == TextToSpeech.SUCCESS) {
-            val result = textToSpeech?.setLanguage(Locale.ENGLISH)
-
-            isTtsReady =
-                result != TextToSpeech.LANG_MISSING_DATA &&
-                        result != TextToSpeech.LANG_NOT_SUPPORTED
+    override fun onPause() {
+        super.onPause()
+        if (::voiceController.isInitialized) {
+            voiceController.onPause()
         }
-    }
-
-    private fun speakText(text: String, onDone: (() -> Unit)? = null) {
-        if (!isTtsReady) {
-            onDone?.invoke()
-            return
-        }
-
-        textToSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {}
-
-            override fun onDone(utteranceId: String?) {
-                runOnUiThread {
-                    onDone?.invoke()
-                }
-            }
-
-            @Deprecated("Deprecated in Java")
-            override fun onError(utteranceId: String?) {
-                runOnUiThread {
-                    onDone?.invoke()
-                }
-            }
-        })
-
-        textToSpeech?.speak(
-            text,
-            TextToSpeech.QUEUE_FLUSH,
-            null,
-            "MARY_TTS_${System.currentTimeMillis()}"
-        )
-    }
-    private fun stopSpeaking() {
-        textToSpeech?.stop()
     }
 
     override fun onDestroy() {
-        textToSpeech?.stop()
-        textToSpeech?.shutdown()
+        if (::voiceController.isInitialized) {
+            voiceController.destroy()
+        }
         super.onDestroy()
     }
 }
@@ -126,7 +83,8 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 @Composable
 fun MaryHomeScreen(
     speak: (String, (() -> Unit)?) -> Unit,
-    stopSpeaking: () -> Unit
+    stopSpeaking: () -> Unit,
+    voiceController: VoiceAssistantController? = null
 ) {
     val context = LocalContext.current
 
@@ -137,6 +95,7 @@ fun MaryHomeScreen(
     var maryResponse by remember { mutableStateOf("Mary is waiting...") }
     var statusText by remember { mutableStateOf("Tap Start Mary") }
     var conversationState by remember { mutableStateOf("IDLE") }
+
     fun shouldAutoListen(command: String): Boolean {
         return when (command) {
             "COUNT_WHATSAPP_MESSAGES",
@@ -161,6 +120,7 @@ fun MaryHomeScreen(
             "Microphone permission denied."
         }
     }
+
     val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -187,6 +147,7 @@ fun MaryHomeScreen(
         if (autoStarted) {
             statusText = "Auto listening..."
         }
+
         val hasMicPermission = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.RECORD_AUDIO
@@ -204,121 +165,47 @@ fun MaryHomeScreen(
             return
         }
 
-        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
-            statusText = "Speech recognition is not available on this phone."
-            return
-        }
+        val controller = voiceController ?: VoiceAssistantController(context)
 
-        val routedToBluetooth = BluetoothAudioRouter.routeToBluetoothMic(context)
-
-        if (routedToBluetooth) {
-            statusText = "Bluetooth mic ready..."
-        } else {
-            statusText = "Using phone microphone..."
-        }
-
-        Handler(Looper.getMainLooper()).postDelayed({
-            val speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
-
-            val speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(
-                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-                )
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            }
-
-            speechRecognizer.setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {
+        controller.startListeningSession(
+            callbacks = VoiceAssistantController.RecognitionCallbacks(
+                onRouteStatus = { routeMsg ->
+                    statusText = routeMsg
+                },
+                onReady = { isBt ->
                     isListening = true
-                    statusText = "Listening..."
-                }
-
-                override fun onBeginningOfSpeech() {
+                    statusText = if (isBt) "Bluetooth mic ready (listening)..." else "Listening..."
+                },
+                onBeginningOfSpeech = {
                     statusText = "Speak now..."
-                }
-
-                override fun onRmsChanged(rmsdB: Float) {}
-
-                override fun onBufferReceived(buffer: ByteArray?) {}
-
-                override fun onEndOfSpeech() {
+                },
+                onEndOfSpeech = {
                     isListening = false
                     statusText = "Processing..."
-                }
-
-                override fun onError(error: Int) {
+                },
+                onPartialResult = { partial ->
+                    spokenText = partial
+                },
+                onResult = { text ->
                     isListening = false
-                    BluetoothAudioRouter.resetAudioRoute(context)
-                    speechRecognizer.destroy()
+                    spokenText = if (text.isNotBlank()) text else "No speech detected"
 
-                    if (autoStarted && retryCount < 1) {
-                        statusText = "I did not catch that. Listening again..."
-
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            startVoiceListening(
-                                autoStarted = true,
-                                retryCount = retryCount + 1
-                            )
-                        }, 1200)
-
-                        return
-                    }
-
-                    if (autoStarted) {
-                        val timeoutResponse = handleAutoListenTimeout()
-
-                        maryResponse = timeoutResponse
-                        detectedCommand = "AUTO_TIMEOUT"
-                        spokenText = "No response"
-                        statusText = "Auto-listen timeout"
-                        conversationState = "IDLE"
-
-                        speak(timeoutResponse, null)
-                    } else {
-                        statusText = "Could not understand. Try again."
-
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            if (isActive) {
-                                startVoiceListening(
-                                    autoStarted = false,
-                                    retryCount = retryCount + 1
-                                )
-                            }
-                        }, 1200)
-                    }
-                }
-
-                override fun onResults(results: Bundle?) {
-                    isListening = false
-
-                    val matches = results?.getStringArrayList(
-                        SpeechRecognizer.RESULTS_RECOGNITION
-                    )
-
-                    spokenText = matches?.firstOrNull() ?: "No speech detected"
                     if (spokenText == "No speech detected") {
-                        BluetoothAudioRouter.resetAudioRoute(context)
-                        speechRecognizer.destroy()
-
                         if (retryCount < 1) {
                             statusText = "No speech detected. Listening again..."
-
                             Handler(Looper.getMainLooper()).postDelayed({
                                 startVoiceListening(
                                     autoStarted = autoStarted,
                                     retryCount = retryCount + 1
                                 )
                             }, 1200)
-
-                            return
+                            return@RecognitionCallbacks
                         }
 
                         statusText = "Could not understand. Try again."
                         maryResponse = "I could not hear anything clearly."
                         speak(maryResponse, null)
-                        return
+                        return@RecognitionCallbacks
                     }
 
                     val result = detectMaryCommand(spokenText, conversationState)
@@ -361,26 +248,45 @@ fun MaryHomeScreen(
                             }
                         }
                     }
+                },
+                onError = { errorMsg, isRecoverable, _ ->
+                    isListening = false
 
-                    BluetoothAudioRouter.resetAudioRoute(context)
-                    speechRecognizer.destroy()
-                }
+                    if (autoStarted && retryCount < 1) {
+                        statusText = "I did not catch that. Listening again..."
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            startVoiceListening(
+                                autoStarted = true,
+                                retryCount = retryCount + 1
+                            )
+                        }, 1200)
+                        return@RecognitionCallbacks
+                    }
 
-                override fun onPartialResults(partialResults: Bundle?) {
-                    val matches = partialResults?.getStringArrayList(
-                        SpeechRecognizer.RESULTS_RECOGNITION
-                    )
-
-                    if (!matches.isNullOrEmpty()) {
-                        spokenText = matches[0]
+                    if (autoStarted) {
+                        val timeoutResponse = handleAutoListenTimeout()
+                        maryResponse = timeoutResponse
+                        detectedCommand = "AUTO_TIMEOUT"
+                        spokenText = "No response"
+                        statusText = "Auto-listen timeout"
+                        conversationState = "IDLE"
+                        speak(timeoutResponse, null)
+                    } else {
+                        statusText = "Could not understand. Try again."
+                        if (isActive && isRecoverable && retryCount < 1) {
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                if (isActive) {
+                                    startVoiceListening(
+                                        autoStarted = false,
+                                        retryCount = retryCount + 1
+                                    )
+                                }
+                            }, 1200)
+                        }
                     }
                 }
-
-                override fun onEvent(eventType: Int, params: Bundle?) {}
-            })
-
-            speechRecognizer.startListening(speechIntent)
-        }, 700)
+            )
+        )
     }
 
     Column(
@@ -444,17 +350,20 @@ fun MaryHomeScreen(
                         statusText = if (isActive) {
                             "Mary is active. Tap Listen."
                         } else {
+                            voiceController?.cancelListening()
+                            voiceController?.stopSpeaking()
+                            isListening = false
                             "Tap Start Mary"
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
-                )
-                {
+                ) {
                     Text(
                         text = if (isActive) "Stop Mary" else "Start Mary",
                         fontSize = 18.sp
                     )
                 }
+
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
@@ -470,7 +379,6 @@ fun MaryHomeScreen(
                         fontSize = 18.sp
                     )
                 }
-
 
                 Spacer(modifier = Modifier.height(12.dp))
 
