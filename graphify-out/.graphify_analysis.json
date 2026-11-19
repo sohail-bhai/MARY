@@ -1,0 +1,320 @@
+{
+  "communities": {
+    "0": [
+      "activityresultcontracts",
+      "alignment",
+      "app_src_main_java_com_sohail_myassistant_mainactivity",
+      "app_src_main_java_com_sohail_myassistant_ui_theme_color",
+      "app_src_main_java_com_sohail_myassistant_ui_theme_type",
+      "arrangement",
+      "background",
+      "button",
+      "card",
+      "carddefaults",
+      "column",
+      "dp",
+      "enableedgetoedge",
+      "fillmaxsize",
+      "fillmaxwidth",
+      "fontfamily",
+      "fontweight",
+      "getvalue",
+      "handler",
+      "height",
+      "looper",
+      "modifier",
+      "mutablestateof",
+      "padding",
+      "recognitionlistener",
+      "recognizerintent",
+      "remember",
+      "rememberlauncherforactivityresult",
+      "roundedcornershape",
+      "setcontent",
+      "setvalue",
+      "sp",
+      "spacer",
+      "speechrecognizer",
+      "text",
+      "textalign",
+      "textstyle",
+      "typography"
+    ],
+    "1": [
+      "app_src_main_java_com_sohail_myassistant_conversationmanager",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_countwhatsappmessages",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_executemaryaction",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_handleautolistentimeout",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_kt_context",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_listwhatsappsenders",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_maryconversationmemory_clearchatselection",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_maryconversationmemory_haspendingchatselection",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_opennotificationaccesssettings",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_openwhatsapp",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_readlatestwhatsappnotification",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_sendmediabutton",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_updateconversationstate",
+      "app_src_main_java_com_sohail_myassistant_readingsession",
+      "app_src_main_java_com_sohail_myassistant_readingsession_maryreadingsession",
+      "app_src_main_java_com_sohail_myassistant_readingsession_maryreadingsession_continuereading",
+      "app_src_main_java_com_sohail_myassistant_readingsession_maryreadingsession_formatcurrentmessage",
+      "app_src_main_java_com_sohail_myassistant_readingsession_maryreadingsession_getpositionword",
+      "app_src_main_java_com_sohail_myassistant_readingsession_maryreadingsession_isactive",
+      "app_src_main_java_com_sohail_myassistant_readingsession_maryreadingsession_previousmessage",
+      "app_src_main_java_com_sohail_myassistant_readingsession_maryreadingsession_repeatcurrent",
+      "app_src_main_java_com_sohail_myassistant_readingsession_maryreadingsession_stopreading",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_countresponse",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_getmessagecount",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_getsenders",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_senderlistresponse",
+      "intent",
+      "keyevent",
+      "settings",
+      "toast"
+    ],
+    "2": [
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_readallpendingpersonmessages",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_readpersonwhatsappmessage",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_readselectedchatmessages",
+      "app_src_main_java_com_sohail_myassistant_readingsession_maryreadingsession_start",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessage",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessage_whatsappmessage",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_findsenderintext",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_getallmessagesforperson",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_getchatoptionsforperson",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_getdisplaynameforchat",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_getmessagesforperson",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_getpersonmessagesfromchat",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_namematchesperson",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_normalize",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_readallmessagesforperson",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_readpersonmessagesfromchat"
+    ],
+    "3": [
+      "app_src_main_java_com_sohail_myassistant_mainactivity_kt_composable",
+      "app_src_main_java_com_sohail_myassistant_mainactivity_mainactivity",
+      "app_src_main_java_com_sohail_myassistant_mainactivity_mainactivity_oncreate",
+      "app_src_main_java_com_sohail_myassistant_mainactivity_mainactivity_ondestroy",
+      "app_src_main_java_com_sohail_myassistant_mainactivity_mainactivity_oninit",
+      "app_src_main_java_com_sohail_myassistant_mainactivity_mainactivity_speaktext",
+      "app_src_main_java_com_sohail_myassistant_mainactivity_mainactivity_speaktext_object_utteranceprogresslistener_l91",
+      "app_src_main_java_com_sohail_myassistant_mainactivity_mainactivity_speaktext_object_utteranceprogresslistener_l91_ondone",
+      "app_src_main_java_com_sohail_myassistant_mainactivity_mainactivity_speaktext_object_utteranceprogresslistener_l91_onerror",
+      "app_src_main_java_com_sohail_myassistant_mainactivity_mainactivity_speaktext_object_utteranceprogresslistener_l91_onstart",
+      "app_src_main_java_com_sohail_myassistant_mainactivity_mainactivity_stopspeaking",
+      "app_src_main_java_com_sohail_myassistant_mainactivity_maryhomescreen",
+      "componentactivity",
+      "deprecated",
+      "oninitlistener",
+      "texttospeech"
+    ],
+    "4": [
+      "app_src_main_java_com_sohail_myassistant_marynotificationlistener",
+      "app_src_main_java_com_sohail_myassistant_marynotificationlistener_marynotificationlistener",
+      "app_src_main_java_com_sohail_myassistant_marynotificationlistener_marynotificationlistener_iswhatsappsummary",
+      "app_src_main_java_com_sohail_myassistant_marynotificationlistener_marynotificationlistener_onlistenerconnected",
+      "app_src_main_java_com_sohail_myassistant_marynotificationlistener_marynotificationlistener_onlistenerdisconnected",
+      "app_src_main_java_com_sohail_myassistant_marynotificationlistener_marynotificationlistener_onnotificationposted",
+      "app_src_main_java_com_sohail_myassistant_marynotificationlistener_marynotificationlistener_refreshwhatsappnotifications",
+      "app_src_main_java_com_sohail_myassistant_marynotificationlistener_marynotificationlistener_savewhatsappnotification",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_addmessage",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore_resetmessages",
+      "bundle",
+      "notification",
+      "notificationlistenerservice",
+      "statusbarnotification"
+    ],
+    "5": [
+      "app_src_main_java_com_sohail_myassistant_bluetoothaudiorouter",
+      "app_src_main_java_com_sohail_myassistant_bluetoothaudiorouter_bluetoothaudiorouter",
+      "app_src_main_java_com_sohail_myassistant_bluetoothaudiorouter_bluetoothaudiorouter_hasbluetoothpermission",
+      "app_src_main_java_com_sohail_myassistant_bluetoothaudiorouter_bluetoothaudiorouter_resetaudioroute",
+      "app_src_main_java_com_sohail_myassistant_bluetoothaudiorouter_bluetoothaudiorouter_routetobluetoothmic",
+      "app_src_main_java_com_sohail_myassistant_bluetoothaudiorouter_kt_context",
+      "audiodeviceinfo",
+      "audiomanager",
+      "build",
+      "contextcompat",
+      "manifest",
+      "packagemanager",
+      "suppresslint"
+    ],
+    "6": [
+      "app_src_main_java_com_sohail_myassistant_commanddetector",
+      "app_src_main_java_com_sohail_myassistant_commanddetector_detectmarycommand",
+      "app_src_main_java_com_sohail_myassistant_commanddetector_extractpossiblepersonwords",
+      "app_src_main_java_com_sohail_myassistant_commanddetector_marycommand",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_maryconversationmemory",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_maryconversationmemory_haspreviouschatoptions",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_maryconversationmemory_matchchatselection",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_maryconversationmemory_normalize",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_maryconversationmemory_setpendingchatselection",
+      "app_src_main_java_com_sohail_myassistant_conversationmanager_pendingchatoption",
+      "app_src_main_java_com_sohail_myassistant_whatsappmessagestore",
+      "locale"
+    ],
+    "7": [
+      "activity",
+      "app_src_main_java_com_sohail_myassistant_ui_theme_theme",
+      "app_src_main_java_com_sohail_myassistant_ui_theme_theme_kt_composable",
+      "app_src_main_java_com_sohail_myassistant_ui_theme_theme_marytheme",
+      "darkcolorscheme",
+      "dynamicdarkcolorscheme",
+      "dynamiclightcolorscheme",
+      "issystemindarktheme",
+      "lightcolorscheme",
+      "localcontext",
+      "materialtheme"
+    ],
+    "8": [
+      "androidjunit4",
+      "app_src_androidtest_java_com_sohail_myassistant_exampleinstrumentedtest",
+      "app_src_androidtest_java_com_sohail_myassistant_exampleinstrumentedtest_exampleinstrumentedtest",
+      "app_src_androidtest_java_com_sohail_myassistant_exampleinstrumentedtest_exampleinstrumentedtest_useappcontext",
+      "app_src_androidtest_java_com_sohail_myassistant_exampleinstrumentedtest_kt_test",
+      "instrumentationregistry",
+      "runwith"
+    ],
+    "9": [
+      "app_src_test_java_com_sohail_myassistant_exampleunittest",
+      "app_src_test_java_com_sohail_myassistant_exampleunittest_exampleunittest",
+      "app_src_test_java_com_sohail_myassistant_exampleunittest_exampleunittest_addition_iscorrect",
+      "app_src_test_java_com_sohail_myassistant_exampleunittest_kt_test"
+    ],
+    "10": [
+      "gradlew",
+      "gradlew__entry",
+      "gradlew_die",
+      "gradlew_warn"
+    ],
+    "11": [
+      "app_build_gradle"
+    ],
+    "12": [
+      "build_gradle"
+    ],
+    "13": [
+      "settings_gradle"
+    ]
+  },
+  "cohesion": {
+    "0": 0.05405405405405406,
+    "1": 0.11954022988505747,
+    "2": 0.27205882352941174,
+    "3": 0.15,
+    "4": 0.21978021978021978,
+    "5": 0.20512820512820512,
+    "6": 0.25757575757575757,
+    "7": 0.2,
+    "8": 0.42857142857142855,
+    "9": 0.6666666666666666,
+    "10": 0.8333333333333334,
+    "11": 1.0,
+    "12": 1.0,
+    "13": 1.0
+  },
+  "gods": [
+    {
+      "id": "app_src_main_java_com_sohail_myassistant_whatsappmessagestore_marynotificationstore",
+      "label": "MaryNotificationStore",
+      "degree": 18
+    },
+    {
+      "id": "app_src_main_java_com_sohail_myassistant_conversationmanager_executemaryaction",
+      "label": "executeMaryAction()",
+      "degree": 16
+    },
+    {
+      "id": "app_src_main_java_com_sohail_myassistant_readingsession_maryreadingsession",
+      "label": "MaryReadingSession",
+      "degree": 10
+    },
+    {
+      "id": "app_src_main_java_com_sohail_myassistant_mainactivity_mainactivity",
+      "label": "MainActivity",
+      "degree": 9
+    },
+    {
+      "id": "app_src_main_java_com_sohail_myassistant_marynotificationlistener_marynotificationlistener",
+      "label": "MaryNotificationListener",
+      "degree": 9
+    },
+    {
+      "id": "app_src_main_java_com_sohail_myassistant_conversationmanager_maryconversationmemory",
+      "label": "MaryConversationMemory",
+      "degree": 8
+    },
+    {
+      "id": "app_src_main_java_com_sohail_myassistant_conversationmanager_readpersonwhatsappmessage",
+      "label": "readPersonWhatsAppMessage()",
+      "degree": 8
+    },
+    {
+      "id": "app_src_main_java_com_sohail_myassistant_mainactivity_mainactivity_speaktext_object_utteranceprogresslistener_l91",
+      "label": "UtteranceProgressListener",
+      "degree": 7
+    },
+    {
+      "id": "app_src_main_java_com_sohail_myassistant_commanddetector_detectmarycommand",
+      "label": "detectMaryCommand()",
+      "degree": 7
+    },
+    {
+      "id": "app_src_main_java_com_sohail_myassistant_whatsappmessage_whatsappmessage",
+      "label": "WhatsAppMessage",
+      "degree": 6
+    }
+  ],
+  "surprises": [
+    {
+      "source": "MaryReadingSession",
+      "target": "WhatsAppMessage",
+      "source_files": [
+        "app/src/main/java/com/sohail/myassistant/ReadingSession.kt",
+        "app/src/main/java/com/sohail/myassistant/WhatsAppMessage.kt"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "MaryNotificationStore",
+      "target": "MaryNotificationListener",
+      "source_files": [
+        "app/src/main/java/com/sohail/myassistant/WhatsAppMessageStore.kt",
+        "app/src/main/java/com/sohail/myassistant/MaryNotificationListener.kt"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `MaryNotificationStore` connect `Community 2` to `Community 1`, `Community 4`, `Community 6`?",
+      "why": "High betweenness centrality (0.122) - this node is a cross-community bridge."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 0` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.05405405405405406 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `MaryNotificationListener` connect `Community 4` to `Community 2`?",
+      "why": "High betweenness centrality (0.068) - this node is a cross-community bridge."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 1` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.11954022988505747 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `executeMaryAction()` connect `Community 1` to `Community 2`?",
+      "why": "High betweenness centrality (0.055) - this node is a cross-community bridge."
+    }
+  ]
+}

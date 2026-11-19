@@ -1,0 +1,111 @@
+{
+  ".codex/hooks.json": {
+    "mtime": 1795098779.826145,
+    "seen": 1795098782.8907697,
+    "ast_hash": "5ebef3dd159986e465ab65e4014107ec",
+    "semantic_hash": "5ebef3dd159986e465ab65e4014107ec",
+    "ast_empty": true
+  },
+  "app/build.gradle.kts": {
+    "mtime": 1778157340.6744738,
+    "seen": 1795098782.8907752,
+    "ast_hash": "41bbb59dab5f60910f78f77da9b8099a",
+    "semantic_hash": "41bbb59dab5f60910f78f77da9b8099a"
+  },
+  "app/src/androidTest/java/com/sohail/myassistant/ExampleInstrumentedTest.kt": {
+    "mtime": 1778157339.5204637,
+    "seen": 1795098782.890944,
+    "ast_hash": "ec7a92140a73e3f0663bc10c21d9c062",
+    "semantic_hash": "ec7a92140a73e3f0663bc10c21d9c062"
+  },
+  "app/src/main/java/com/sohail/myassistant/BluetoothAudioRouter.kt": {
+    "mtime": 1778256697.0081427,
+    "seen": 1795098782.8910394,
+    "ast_hash": "53f463ee208ce5cab42af702f9d2651e",
+    "semantic_hash": "53f463ee208ce5cab42af702f9d2651e"
+  },
+  "app/src/main/java/com/sohail/myassistant/CommandDetector.kt": {
+    "mtime": 1778263344.5284848,
+    "seen": 1795098782.8911166,
+    "ast_hash": "ad3eccba4afff4f30bd93d55e9e148e1",
+    "semantic_hash": "ad3eccba4afff4f30bd93d55e9e148e1"
+  },
+  "app/src/main/java/com/sohail/myassistant/ConversationManager.kt": {
+    "mtime": 1778264231.570706,
+    "seen": 1795098782.8911872,
+    "ast_hash": "66ec5938fb0ddeba644669e47ddc5472",
+    "semantic_hash": "66ec5938fb0ddeba644669e47ddc5472"
+  },
+  "app/src/main/java/com/sohail/myassistant/MainActivity.kt": {
+    "mtime": 1778264827.842097,
+    "seen": 1795098782.8912559,
+    "ast_hash": "47879132678f2f46a8f0f28ace4b7c7b",
+    "semantic_hash": "47879132678f2f46a8f0f28ace4b7c7b"
+  },
+  "app/src/main/java/com/sohail/myassistant/MaryNotificationListener.kt": {
+    "mtime": 1778174618.182047,
+    "seen": 1795098782.8913248,
+    "ast_hash": "882fc96d4f95ab6bf74ab696c3f07a32",
+    "semantic_hash": "882fc96d4f95ab6bf74ab696c3f07a32"
+  },
+  "app/src/main/java/com/sohail/myassistant/ReadingSession.kt": {
+    "mtime": 1778263258.6054966,
+    "seen": 1795098782.8913941,
+    "ast_hash": "457a1bb264721f40d6aa0e456793b374",
+    "semantic_hash": "457a1bb264721f40d6aa0e456793b374"
+  },
+  "app/src/main/java/com/sohail/myassistant/WhatsAppMessage.kt": {
+    "mtime": 1778173844.5982587,
+    "seen": 1795098782.8914707,
+    "ast_hash": "6633f540d3ef7dd92109e4d031336320",
+    "semantic_hash": "6633f540d3ef7dd92109e4d031336320"
+  },
+  "app/src/main/java/com/sohail/myassistant/WhatsAppMessageStore.kt": {
+    "mtime": 1778263319.3448763,
+    "seen": 1795098782.8915367,
+    "ast_hash": "7c3d5f0e9c341907a10033a0c5cfe394",
+    "semantic_hash": "7c3d5f0e9c341907a10033a0c5cfe394"
+  },
+  "app/src/main/java/com/sohail/myassistant/ui/theme/Color.kt": {
+    "mtime": 1778157340.3385808,
+    "seen": 1795098782.8916068,
+    "ast_hash": "709c4d6ab08b284ebff166e7beb5dd9c",
+    "semantic_hash": "709c4d6ab08b284ebff166e7beb5dd9c"
+  },
+  "app/src/main/java/com/sohail/myassistant/ui/theme/Theme.kt": {
+    "mtime": 1778157340.7734747,
+    "seen": 1795098782.8916793,
+    "ast_hash": "0989b6f62384a00127e9594b49927981",
+    "semantic_hash": "0989b6f62384a00127e9594b49927981"
+  },
+  "app/src/main/java/com/sohail/myassistant/ui/theme/Type.kt": {
+    "mtime": 1778157340.350582,
+    "seen": 1795098782.891748,
+    "ast_hash": "b552ccf6d895ae250d96ac6fb19f5db0",
+    "semantic_hash": "b552ccf6d895ae250d96ac6fb19f5db0"
+  },
+  "app/src/test/java/com/sohail/myassistant/ExampleUnitTest.kt": {
+    "mtime": 1778157339.487464,
+    "seen": 1795098782.8918183,
+    "ast_hash": "241239df68e857355dc29764a1c73f6d",
+    "semantic_hash": "241239df68e857355dc29764a1c73f6d"
+  },
+  "build.gradle.kts": {
+    "mtime": 1778157340.5325787,
+    "seen": 1795098782.8918939,
+    "ast_hash": "f49e4fcefdb4de67e72283440b2f3b75",
+    "semantic_hash": "f49e4fcefdb4de67e72283440b2f3b75"
+  },
+  "gradlew": {
+    "mtime": 1778157337.611471,
+    "seen": 1795098782.8919554,
+    "ast_hash": "266606e78242737ef3da02a80ea0564d",
+    "semantic_hash": "266606e78242737ef3da02a80ea0564d"
+  },
+  "settings.gradle.kts": {
+    "mtime": 1778157338.814623,
+    "seen": 1795098782.8920176,
+    "ast_hash": "1e7f62866913ccf2cfa4f9ca291d5c32",
+    "semantic_hash": "1e7f62866913ccf2cfa4f9ca291d5c32"
+  }
+}
